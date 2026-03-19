@@ -1,49 +1,26 @@
--- 17. Gộp danh sách email từ bảng customers và một danh sách email marketing
-SELECT email FROM customers
-UNION
-SELECT email FROM marketing_emails
-
--- 18. Tìm khách hàng vừa mua sản phẩm category 'Electronics' vừa mua 'Books'
-SELECT c.customer_id, c.customer_name
-FROM customers c 
-JOIN orders o ON o.customer_id = c.customer_id
-JOIN order_items oi ON o.order_id = oi.order_id
-JOIN products p ON oi.product_id = p.product_id
-JOIN categories ca ON ca.category_id = p.category_id
-WHERE ca.category_name = 'Electronics'
-GROUP BY c.customer_id, c.customer_name
-INTERSECT
-SELECT c.customer_id, c.customer_name
-FROM customers c 
-JOIN orders o ON o.customer_id = c.customer_id
-JOIN order_items oi ON o.order_id = oi.order_id
-JOIN products p ON oi.product_id = p.product_id
-JOIN categories ca ON ca.category_id = p.category_id
-WHERE ca.category_name = 'Books'
-GROUP BY c.customer_id, c.customer_name
-
--- 19. So sánh danh sách sản phẩm bán chạy tháng này và tháng trước
-SELECT p.product_id, p.product_name
-FROM products p 
-JOIN order_items oi ON oi.product_id = p.product_id
-JOIN orders o ON o.order_id = oi.order_id
-WHERE EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE) 
-AND EXTRACT(MONTH FROM o.order_date) = EXTRACT(MONTH FROM CURRENT_DATE) 
-GROUP BY p.product_id, p.product_name
-INTERSECT
-SELECT p.product_id, p.product_name
-FROM products p 
-JOIN order_items oi ON oi.product_id = p.product_id
-JOIN orders o ON o.order_id = oi.order_id
-WHERE EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE) 
-AND EXTRACT(MONTH FROM o.order_date) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
-GROUP BY p.product_id, p.product_name
-
--- 20. Tìm khách hàng có ở cả hai thành phố Hà Nội và TP.HCM (giả sử có bảng customer_addresses)
-SELECT c.customer_id, c.customer_name
-FROM customer_addresses ca JOIN customers c ON ca.customer_id = c.customer_id
-WHERE ca.city = 'Hà Nội'
-INTERSECT
-SELECT c.customer_id, c.customer_name
-FROM customer_addresses ca JOIN customers c ON ca.customer_id = c.customer_id
-WHERE ca.city = 'Hồ Chí Minh'
+-- 16. Viết truy vấn cập nhật lại total_amount trong bảng orders dựa trên tổng tiền từ bảng order_items tương ứng.
+UPDATE orders o
+SET total_amount = sub.total
+FROM (
+    SELECT order_id, SUM(quantity * unit_price) AS total
+    FROM order_items
+    GROUP BY order_id
+) sub
+WHERE o.order_id = sub.order_id;
+-- 17. Tạo một View tên là vw_customer_summary hiển thị: Tên khách hàng, Tổng số đơn đã mua, Tổng số tiền đã chi tiêu.
+CREATE VIEW vw_customer_summary AS
+SELECT 
+    c.customer_name,
+    COUNT(o.order_id) AS total_orders,
+    COALESCE(SUM(o.total_amount), 0) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_name;
+-- 18. Viết truy vấn tìm thành phố có doanh thu cao nhất trong năm 2026.
+SELECT c.city, SUM(o.total_amount) AS total_revenue
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE EXTRACT(YEAR FROM o.order_date) = 2026
+GROUP BY c.city
+ORDER BY total_revenue DESC
+LIMIT 1;

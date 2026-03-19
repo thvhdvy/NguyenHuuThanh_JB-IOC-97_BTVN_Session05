@@ -1,18 +1,23 @@
--- 13. Hiển thị thông tin đơn hàng kèm tên khách hàng và email (INNER JOIN)
-SELECT o.order_id as ma_don_hang, c.customer_name as ten_khach_hang, c.email, o.order_date as ngay_dat, o.status as trang_thai
-FROM orders o 
-LEFT JOIN customers c ON c.customer_id = o.customer_id
-
--- 14. Liệt kê tất cả khách hàng và số đơn hàng của họ (LEFT JOIN)
-SELECT c.customer_name as ten_khach_hang, COUNT(o.order_id) as so_don_hang
-FROM orders o
-LEFT JOIN customers c ON c.customer_id = o.customer_id
-GROUP BY c.customer_name
-
--- 15. Hiển thị tất cả sản phẩm và số lượng đã bán (LEFT JOIN)
-SELECT p.product_name as ten_san_pham, SUM(oi.quantity) as so_da_ban
-FROM products p 
-JOIN order_items oi ON oi.product_id = p.product_id
-GROUP BY p.product_name
-
--- 16. Liệt kê tất cả danh mục và số sản phẩm trong mỗi danh mục (LEFT JOIN)
+-- 13. (UNION): Gộp danh sách Email của khách hàng và Email của các nhà cung cấp (giả sử có bảng suppliers) 
+-- để làm danh sách gửi tin NewsLetter.
+SELECT c.email FROM customers c
+UNION
+SELECT s.email FROM suppliers s
+-- 14. (INTERSECT): Tìm danh sách customer_id vừa mua sản phẩm thuộc danh mục 'Electronics' vừa mua sản phẩm thuộc danh mục 'Books'.
+SELECT c.customer_id
+FROM customers c JOIN orders o ON c.customer_id = o.customer_id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON p.product_id = oi.product_id
+JOIN categories ca ON ca.category_id = p.category_id
+WHERE ca.category_name = 'Electronics'
+INTERSECT
+SELECT c.customer_id
+FROM customers c JOIN orders o ON c.customer_id = o.customer_id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON p.product_id = oi.product_id
+JOIN categories ca ON ca.category_id = p.category_id
+WHERE ca.category_name = 'Books'
+-- 15. (EXCEPT): Tìm danh sách các sản phẩm có trong kho (products) nhưng chưa từng xuất hiện trong bất kỳ đơn hàng nào (order_items).
+SELECT p.product_name AS "Tên SP"
+FROM products p LEFT JOIN order_items oi ON p.product_id = oi.product_id
+WHERE oi.order_id IS NULL
